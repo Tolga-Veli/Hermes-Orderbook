@@ -1,92 +1,100 @@
 #pragma once
 
-#include "globals.hpp"
-
-#include <cstdint>
+#include <cstdio>
 #include <format>
-#include <iostream>
+#include <print>
+#include <source_location>
 #include <string_view>
+#include <utility>
 
 namespace Hermes::core {
+enum class LogLevel : std::uint8_t {
+  Trace = 0,
+  Debug,
+  Info,
+  Warn,
+  Error,
+  Fatal
+};
 
-enum class LogLevel : uint16_t { Trace = 0, Info, Warning, Error, Fatal, None };
+namespace detail {
+
+[[nodiscard]] constexpr std::string_view to_string(LogLevel level) noexcept {
+  using enum LogLevel;
+
+  switch (level) {
+  case Trace:
+    return "TRACE";
+  case Debug:
+    return "DEBUG";
+  case Info:
+    return "INFO";
+  case Warn:
+    return "WARN";
+  case Error:
+    return "ERROR";
+  case Fatal:
+    return "FATAL";
+  default:
+    return "Unknown";
+  }
+}
+
+// ANSI codes for terminal colour
+[[nodiscard]] constexpr std::string_view
+to_ansi_color(LogLevel level) noexcept {
+  using enum LogLevel;
+
+  switch (level) {
+  case Trace:
+    return "\x1b[90m"; // Gray
+  case Debug:
+    return "\x1b[36m"; // Cyan
+  case Info:
+    return "\x1b[32m"; // Green
+  case Warn:
+    return "\x1b[33m"; // Yellow
+  case Error:
+    return "\x1b[31m"; // Red
+  case Fatal:
+    return "\x1b[41;97m"; // White text on red background
+  default:
+    return "";
+  }
+}
+
+inline constexpr std::string_view k_ColorReset = "\x1b[0m";
 
 class Logger {
 public:
-  static inline constexpr std::string_view HERMES_COL_GRAY = "\033[90m";
-  static inline constexpr std::string_view HERMES_COL_GREEN = "\033[32m";
-  static inline constexpr std::string_view HERMES_COL_YELLOW = "\033[33m";
-  static inline constexpr std::string_view HERMES_COL_RED = "\033[31m";
-  static inline constexpr std::string_view HERMES_COL_FATAL =
-      "\033[41m\033[37m";
-
-  static void SetLevel(LogLevel level) { s_currentLevel = level; }
-  static LogLevel GetLevel() { return s_currentLevel; }
-
-  template <typename... Args>
-  static void Log(LogLevel level, std::string_view prefix,
-                  std::string_view color, std::format_string<Args...> fmt,
-                  Args &&...args) {
-    if (level < s_currentLevel)
-      return;
-
-    std::string message = std::format(fmt, std::forward<Args>(args)...);
-    std::cout << color << "[" << prefix << "] " << message << "\033[0m"
-              << std::endl;
+  static Logger &GetInstance() noexcept {
+    static Logger instance;
+    return instance;
   }
 
   template <typename... Args>
-  static void LogFileAndLine(LogLevel level, std::string_view prefix,
-                             std::string_view color, std::string_view file,
-                             i32 line, std::format_string<Args...> fmt,
-                             Args &&...args) {
-    if (level < s_currentLevel)
-      return;
+  void Log(LogLevel level, std::source_location loc,
+           std::format_string<Args...> fmt, Args &&...args) {
 
-    std::string message = std::format(fmt, std::forward<Args>(args)...);
-    std::cout << color << "[" << prefix << "] " << file << ":" << line << ": "
-              << message << "\033[0m" << std::endl;
+    const std::string msg = std::format(fmt, std::forward<Args>(args)...);
+
+    std::println("{}[{}]{} {} ({}:{})", to_ansi_color(level), to_string(level),
+                 k_ColorReset, msg, loc.file_name(), loc.line());
   }
 
 private:
-  static inline LogLevel s_currentLevel = LogLevel::Trace;
+  Logger() = default;
 };
-
-static inline consteval std::string_view strip_path(std::string_view path) {
-  size_t last_slash = path.find_last_of("\\/");
-  return (last_slash == std::string_view::npos) ? path
-                                                : path.substr(last_slash + 1);
-}
-
+} // namespace detail
 } // namespace Hermes::core
 
-#define HERMES_DEBUG 1
+#define LOG(level, ...)                                                        \
+  ::Hermes::core::detail::Logger::GetInstance().Log(                           \
+      level, std::source_location::current(), __VA_ARGS__)
 
-#ifdef HERMES_DEBUG
-#define HERMES_INFO(...)                                                       \
-  ::Hermes::core::Logger::Log(::Hermes::core::LogLevel::Info, "INFO",          \
-                              ::Hermes::core::Logger::HERMES_COL_GREEN,        \
-                              __VA_ARGS__)
-#define HERMES_WARN(...)                                                       \
-  ::Hermes::core::Logger::Log(::Hermes::core::LogLevel::Warning, "WARN",       \
-                              ::Hermes::core::Logger::HERMES_COL_YELLOW,       \
-                              __VA_ARGS__)
-#else
-#define HERMES_INFO(...)
-#define HERMES_WARN(...)
-#endif
-
-#define HERMES_ERROR(...)                                                      \
-  ::Hermes::core::Logger::LogFileAndLine(                                      \
-      ::Hermes::core::LogLevel::Error, "ERROR",                                \
-      ::Hermes::core::Logger::HERMES_COL_RED,                                  \
-      ::Hermes::core::strip_path(__FILE__), __LINE__, __VA_ARGS__)
-
-#define HERMES_FATAL(...)                                                      \
-  do {                                                                         \
-    ::Hermes::core::Logger::LogFileAndLine(                                    \
-        ::Hermes::core::LogLevel::Fatal, "FATAL",                              \
-        ::Hermes::core::Logger::HERMES_COL_FATAL,                              \
-        ::Hermes::core::strip_path(__FILE__), __LINE__, __VA_ARGS__);          \
-    std::abort();                                                              \
-  } while (0)
+#define LOG_TRACE(...) LOG(::Hermes::core::LogLevel::Trace, __VA_ARGS__)
+#define LOG_DEBUG(...) LOG(::Hermes::core::LogLevel::Debug, __VA_ARGS__)
+#define LOG_INFO(...) LOG(::Hermes::core::LogLevel::Info, __VA_ARGS__)
+#define LOG_WARN(...) LOG(::Hermes::core::LogLevel::Warn, __VA_ARGS__)
+#define LOG_ERROR(...) LOG(::Hermes::core::LogLevel::Error, __VA_ARGS__)
+#define LOG_FATAL(...) LOG(::Hermes::core::LogLevel::Fatal, __VA_ARGS__)

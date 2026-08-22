@@ -1,0 +1,6 @@
+Client -> Server -> TradingEngine -> Input Queue (runs on main thread)
+                                  -> Orderbook (runs on own thread, accepts inputs from TE)
+                                  -> Output Queue (events produced by Orderbook)
+
+Orderbook -> Match -> MatchingPolicy
+            

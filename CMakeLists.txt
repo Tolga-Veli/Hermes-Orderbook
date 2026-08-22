@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(Orderbook VERSION 1.0 LANGUAGES CXX)
+project(Hermes VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,68 +8,69 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # neovim / clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(ROOT    "${CMAKE_CURRENT_SOURCE_DIR}")
-set(SRC_DIR "${ROOT}/src")
-set(LIB_DIR "${ROOT}/libs")
+ 
+# Paths
+set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+set(TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+# Options
+
+option(HERMES_BUILD_TESTS "Build Hermes tests" ON)
+option(HERMES_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviourSanitizer" OFF)
+
+# Dependencies
+add_subdirectory("${LIB_DIR}/FTXUI")
+
+if(HERMES_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory("${LIB_DIR}/googletest")
+endif()
+
+# Hermes
+
+file(GLOB_RECURSE HERMES_SOURCES CONFIGURE_DEPENDS
   "${SRC_DIR}/*.inl"
   "${SRC_DIR}/*.cpp"
 )
 
-file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS
+file(GLOB_RECURSE HERMES_HEADERS CONFIGURE_DEPENDS
   "${SRC_DIR}/*.hpp"
 )
 
-file(GLOB_RECURSE SRC_SUBDIRS LIST_DIRECTORIES true
-  "${SRC_DIR}/*"
-)
+add_executable(Hermes ${HERMES_SOURCES} ${HERMES_HEADERS})
 
-set(ALL_INCLUDE_DIRS
-  "${SRC_DIR}"
-  "${LIB_DIR}"
-)
+target_include_directories(Hermes PRIVATE "${SRC_DIR}")
 
-foreach(p ${SRC_SUBDIRS})
-  if(IS_DIRECTORY "${p}")
-    list(APPEND ALL_INCLUDE_DIRS "${p}")
+target_link_libraries(Hermes PRIVATE ftxui::screen ftxui::dom ftxui::component)
+
+source_group(TREE "${SRC_DIR}" PREFIX "src" FILES ${SOURCES} ${HEADERS})
+
+# Sanitizers
+if(HERMES_SANITIZERS)
+  target_compile_options(Hermes PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+  target_link_options(Hermes PRIVATE -fsanitize=address,undefined)
+endif()
+
+# Tests
+if(HERMES_BUILD_TESTS)
+  file(GLOB_RECURSE HERMES_TEST_SOURCES CONFIGURE_DEPENDS
+      "${TEST_DIR}/*.cpp"
+      "${TEST_DIR}/*.hpp"
+  )
+
+  add_executable(HermesTests ${HERMES_TEST_SOURCES})
+
+  target_include_directories(HermesTests PRIVATE "${SRC_DIR}")
+
+  target_link_libraries(HermesTests PRIVATE GTest::gtest_main)
+
+  if(HERMES_SANITIZERS)
+    target_compile_options(HermesTests PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(HermesTests PRIVATE -fsanitize=address,undefined)
   endif()
-endforeach()
 
-list(REMOVE_DUPLICATES ALL_INCLUDE_DIRS)
-
-add_subdirectory("${LIB_DIR}/FTXUI")
-
-add_executable(Orderbook ${SOURCES} ${HEADERS})
-
-target_include_directories(Orderbook PRIVATE
-  ${ALL_INCLUDE_DIRS}
-)
-
-target_link_libraries(Orderbook PRIVATE
-  ftxui::screen
-  ftxui::dom
-  ftxui::component
-)
-
-source_group(TREE "${SRC_DIR}" PREFIX "src" FILES
-  ${SOURCES} ${HEADERS}
-)
-
-# sanitizers
-set(CMAKE_BUILD_TYPE Debug)
-add_compile_options(-g3 -O0 -fno-omit-frame-pointer)
-add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g3 -O1)
-add_link_options(-fsanitize=address,undefined)
-
-
-#enable_testing()
-#file(GLOB_RECURSE TEST_SOURCE CONFIGURE_DEPENDS
-#  "${ROOT}/test/*.hpp"
-#  "${ROOT}/test/*.cpp"
-#)
-#
-#add_executable(OrderBookTests ${TEST_SOURCE})
-#target_link_libraries(OrderBookTests PRIVATE gtest gtest_main)
-#add_test(NAME OrderbookTests COMMAND OrderBookTests)
+  include(GoogleTest)
+  gtest_discover_tests(HermesTests)
+endif()
 
