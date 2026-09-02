@@ -1,4 +1,4 @@
-# Trading-Engine
+# Trading-Engine (BEING REWRITTEN FROM SCRATCH, THIS DOESN'T APPLY TO THE NEWEST VERSION OF THE REPO)
 A fast, **C++23** trading engine implementing **price–time priority matching**, with a simple terminal-based visualization and order flow simulation with random orders.
 ![Live orderbook simulation](assets/orderbook.gif)
 
