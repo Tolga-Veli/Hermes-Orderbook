@@ -2,9 +2,6 @@
 
 #include <chrono>
 #include <cstdint>
-#include <iomanip>
-#include <sstream>
-#include <string>
 #include <string_view>
 
 namespace Hermes {
@@ -22,6 +19,7 @@ using TradeID = u64;
 using OrderID = u64;
 using Price = i64; // in 1/10th of a cent therefore  1000 = 1$
 using Quantity = u64;
+using SequenceID = u64;
 
 using Clock = std::chrono::steady_clock;
 
@@ -40,19 +38,6 @@ enum class TimeInForce : u8 {
 };
 
 namespace core {
-inline std::string format_price(Price price) {
-  std::stringstream ss;
-  ss << std::fixed << std::setprecision(2)
-     << (static_cast<double>(price) / 100.0);
-  return ss.str();
-}
-
-inline std::string format_quantity(Quantity value) {
-  std::stringstream ss;
-  ss << value;
-  return ss.str();
-}
-
 inline constexpr std::string_view to_string(Side side) {
   if (side == Side::Buy)
     return "Buy";
@@ -88,6 +73,8 @@ inline constexpr std::string_view to_string(TimeInForce tif) {
   }
 }
 
-constexpr bool IsAPowOfTwo(std::size_t val) { return (val & (val - 1)) == 0; }
+constexpr bool IsAPowOfTwo(std::size_t val) {
+  return val != 0 && (val & (val - 1)) == 0;
+}
 } // namespace core
 } // namespace Hermes

@@ -4,3 +4,15 @@ Client -> Server -> TradingEngine -> Input Queue (runs on main thread)
 
 Orderbook -> Match -> MatchingPolicy
             
+Validate Orders -> Trading Engine
+TradingEngine expects valid clean orders
+
+Errors:
+  Tier 1:
+  Tier 2:
+  Tier 3:
+  Tier 4:
+
+
+Events -> Event Distributor -> Private Events -> Client Queues
+                            -> Public Events -> Market Data -> Subscriber Queues

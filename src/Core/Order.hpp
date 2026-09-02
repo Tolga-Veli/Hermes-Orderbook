@@ -5,7 +5,7 @@
 #include <chrono>
 
 namespace Hermes::core {
-class Order {
+class Order final {
 public:
   Order() = delete;
   Order(OrderID orderID, ClientID clientID, Price price, Quantity quantity,
@@ -36,13 +36,13 @@ public:
   Side GetSide() const noexcept { return m_Side; }
   OrderType GetOrderType() const noexcept { return m_OrderType; }
   TimeInForce GetTimeInForce() const noexcept { return m_TimeInForce; }
-
   bool isFilled() const noexcept { return m_RemainingQuantity == 0; }
 
   void ModifyOrder(Price new_price, Quantity new_quantity) noexcept {
     const Quantity filled = GetFilledQuantity();
 
-    HERMES_ASSERT(
+    // NOTE: crash program instead of allowing corrupted state
+    HERMES_VERIFY(
         new_quantity >= filled,
         "Modified quantity is less than the already filled quantity.");
 
@@ -55,8 +55,10 @@ public:
   }
 
   void Fill(Quantity quantity) noexcept {
-    HERMES_ASSERT(m_RemainingQuantity < quantity,
-                  "Order cannot be filled for more than its capcity");
+    // NOTE: crash program instead of allowing corrupted state
+    HERMES_VERIFY(quantity <= m_RemainingQuantity,
+                  "Order cannot be filled for more than its capacity");
+
     m_RemainingQuantity -= quantity;
   }
 

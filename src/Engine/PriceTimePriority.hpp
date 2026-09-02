@@ -1,17 +1,25 @@
+#pragma once
+
 #include "MatchingPolicy.hpp"
+
+#include <algorithm>
 
 namespace Hermes::engine::matching {
 class PriceTimePriority {
 public:
   void match(MatchingContext &context) const noexcept {
-    for (auto &resting : context.level) {
-      if (context.incoming.GetRemainingQuantity() == 0)
-        break;
+    ob::OrderNode *node = context.level.Front();
 
-      Quantity quantity = std::min(context.incoming.GetRemainingQuantity(),
-                                   resting.GetRemainingQuantity());
+    while (node != nullptr && context.incoming.GetRemainingQuantity() > 0) {
+      ob::OrderNode *next = node->next;
 
-      context.execute(context.incoming, resting, quantity);
+      const Quantity quantity =
+          std::min(context.incoming.GetRemainingQuantity(),
+                   node->order.GetRemainingQuantity());
+
+      context.execute(context.incoming, *node, quantity);
+
+      node = next;
     }
   }
 };

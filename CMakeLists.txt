@@ -19,9 +19,6 @@ set(TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 option(HERMES_BUILD_TESTS "Build Hermes tests" ON)
 option(HERMES_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviourSanitizer" OFF)
 
-# Dependencies
-add_subdirectory("${LIB_DIR}/FTXUI")
-
 if(HERMES_BUILD_TESTS)
   enable_testing()
   add_subdirectory("${LIB_DIR}/googletest")
@@ -42,9 +39,7 @@ add_executable(Hermes ${HERMES_SOURCES} ${HERMES_HEADERS})
 
 target_include_directories(Hermes PRIVATE "${SRC_DIR}")
 
-target_link_libraries(Hermes PRIVATE ftxui::screen ftxui::dom ftxui::component)
-
-source_group(TREE "${SRC_DIR}" PREFIX "src" FILES ${SOURCES} ${HEADERS})
+source_group(TREE "${SRC_DIR}" PREFIX "src" FILES ${HERMES_SOURCES} ${HERMES_HEADERS})
 
 # Sanitizers
 if(HERMES_SANITIZERS)
@@ -60,9 +55,7 @@ if(HERMES_BUILD_TESTS)
   )
 
   add_executable(HermesTests ${HERMES_TEST_SOURCES})
-
   target_include_directories(HermesTests PRIVATE "${SRC_DIR}")
-
   target_link_libraries(HermesTests PRIVATE GTest::gtest_main)
 
   if(HERMES_SANITIZERS)

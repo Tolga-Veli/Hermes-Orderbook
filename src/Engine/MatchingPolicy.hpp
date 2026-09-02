@@ -1,19 +1,20 @@
 #pragma once
 
+#include "Core/FunctionRef.hpp"
 #include "Core/Order.hpp"
 #include "Core/Utils.hpp"
 
-#include <span>
+#include "Engine/PriceLevel.hpp"
+
+#include <concepts>
 
 namespace Hermes::engine::matching {
-struct PriceLevel;
-
-using ExecuteTradeCallback = void (*)(core::Order &, core::Order &,
-                                      Quantity) noexcept;
+using ExecuteTradeCallback =
+    core::FunctionRef<void(core::Order &, ob::OrderNode &, Quantity)>;
 
 struct MatchingContext {
   core::Order &incoming;
-  std::span<core::Order> level;
+  ob::PriceLevel &level;
   ExecuteTradeCallback execute;
 };
 
